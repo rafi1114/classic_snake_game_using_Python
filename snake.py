@@ -5,13 +5,60 @@ import random  #To generate random locations for the apple
 
 SIZE = 40
 
+class blockade:
+    def __init__(self, surface):
+        self.surface = surface
+        self.image = pygame.image.load("resources/blockade.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (SIZE, SIZE))
+        self.n = random.randint(1,4) #Number of blockades
+        print("Number of blockades: ", self.n)
+        self.lengths = [] #Initializing the length array
+        self.x = []
+        self.y = []
+        for i in range(self.n):
+            self.lengths.append(random.randint(2,4))
+            self.x.append(random.randint(4,8)*SIZE)
+            self.y.append(random.randint(4,8)*SIZE)
+
+        # print("The Lengths of the blockades are ", self.lengths)
+
+        # for i in range(len(self.x)):
+        #     print("The starting position of x are: ", self.x[i])
+        #     print("The starting position of y are: ", self.y[i])
+
+        for i in range(self.n):
+            self.case = random.randint(1, 3)
+            for j in range(self.lengths[i]+1):
+                if self.case == 1:
+                    self.x.append(self.x[0] + j*SIZE)
+                    self.y.append(self.y[0] + j*SIZE)
+                if self.case == 2:
+                    self.x.append(self.x[0] + j*SIZE)
+                    self.y.append(self.y[0])
+                if self.case == 3:
+                    self.x.append(self.x[0])
+                    self.y.append(self.y[0] + j*SIZE)
+        # print(f"The x positions of blockade  are: ", self.x)
+        # print(f"The y positions of blockade are: ", self.y)
+
+    def blockade_length(self):
+        for i in range(0, len(self.x)):
+            self.surface.blit(self.image, (self.x[i], self.y[i])) #typical function for displaying the blockade
+
+    def draw(self):
+        self.blockade_length()
+        pygame.display.flip() #Updates the display
+
+                                            
+                                        
+
 class apple:
     def __init__(self, surface): #initiates the apple
         self.surface = surface #gets surface from the Game Class as input
         self.image = pygame.image.load("resources/apple.png").convert_alpha() #imports own image here
         self.image = pygame.transform.scale(self.image, (SIZE, 35)) #reshapes the image
-        self.x = 120 #the x position of the first apple
-        self.y = 120 #the y position of the first apple
+        self.x = 40 #the x position of the first apple
+        self.y = 40 #the y position of the first apple
 
 
     def draw(self): #displays the apple
@@ -109,19 +156,22 @@ class Game: #most important
         self.snake.draw() #Draw the snake
         self.apple = apple(self.surface) #passing details to apple
         self.apple.draw() #Draw the apple
+        self.blockade = blockade(self.surface)
+        self.blockade.draw() 
 
 
 
-    def is_collision(self, x1, y1, x2, y2): #collision between apple and snake
+    def is_collision(self, x1, y1, x2, y2): #Any collision detection
 
         if x1 >= x2 and x1 < x2 + SIZE:
             if y1 >= y2 and y1 < y2 + SIZE:
                 return True
         return False 
     
+    
     def display_score(self): #display the score
         font = pygame.font.SysFont('arial', 30, bold=True)
-        score = font.render(f"Score: {self.snake.length}", True, (255,255,255))
+        score = font.render(f"Score: {self.snake.length-1}", True, (255,255,255))
         self.surface.blit(score, (650,10))
     
     def play_bg_music(self):  #play bg music continuously
@@ -130,7 +180,9 @@ class Game: #most important
 
     def play(self):
         self.snake.walk()
+        self.blockade.draw()
         self.apple.draw()
+        
         self.display_score()
         pygame.display.flip()
 
@@ -140,13 +192,31 @@ class Game: #most important
             pygame.mixer.Sound.play(sound1)
             self.snake.increase_length()
             self.apple.move()
-         
+        
+        #Apple colliding with Blockade
+        for i in range(len(self.blockade.x)):
+            if self.is_collision(self.blockade.x[i], self.blockade.y[i], self.apple.x, self.apple.y):
+                self.apple.move()
+        
+        #Apple colliding with Snake's Body Parts
+        for i in range(1, self.snake.length):
+            if self.is_collision(self.snake.x[i], self.snake.y[i], self.apple.x, self.apple.y):
+                self.apple.move() 
+
         # Snake colliding with Itself
         for i in range(2, self.snake.length):
             if self.is_collision(self.snake.x[0], self.snake.y[0], self.snake.x[i], self.snake.y[i]):
                 sound2 = pygame.mixer.Sound("resources/noo.mp3")
                 pygame.mixer.Sound.play(sound2)
                 raise "Colision detected"
+
+
+        # Snake colliding with Blockade
+        for i in range(len(self.blockade.x)):    
+            if self.is_collision(self.snake.x[0], self.snake.y[0], self.blockade.x[i], self.blockade.y[i]):
+                    sound2 = pygame.mixer.Sound("resources/noo.mp3")
+                    pygame.mixer.Sound.play(sound2)
+                    raise "Colision detected"
         
         # Snake going out of bounds
         if self.snake.x[0] > 800 or self.snake.x[0] < 0 or self.snake.y[0] > 600 or self.snake.y[0] < 0:
@@ -171,6 +241,7 @@ class Game: #most important
     def reset(self):
         self.snake = snake(self.surface, self.block, self.background, 1)
         self.apple = apple(self.surface)
+        self.blockade = blockade(self.surface)
 
 
     def run(self):
